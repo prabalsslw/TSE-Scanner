@@ -25,7 +25,25 @@ const QRIcon = ({ color = '#EFEFF3', size = 26 }) => (
   </Svg>
 );
 
-export default function WebViewScreen({ url, onBackToScanner }) {
+// Home Icon Component
+const HomeIcon = ({ color = '#EFEFF3', size = 24 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3L4 9V21H20V9L12 3Z"
+      stroke={color}
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M9 21V15H15V21"
+      stroke={color}
+      strokeWidth="2"
+      fill="none"
+    />
+  </Svg>
+);
+
+export default function WebViewScreen({ url, onBackToScanner, onBackToHome }) {
   const webViewRef = useRef(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
@@ -43,7 +61,6 @@ export default function WebViewScreen({ url, onBackToScanner }) {
     borderColor,
     progressBarColor,
     navBarBg,
-    navBarTransparent
   } = config;
 
   // Separate animated values for different properties
@@ -248,6 +265,17 @@ export default function WebViewScreen({ url, onBackToScanner }) {
           </Text>
         </TouchableOpacity>
 
+        {/* Home Button - Now in center of bottom nav */}
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={onBackToHome}
+          activeOpacity={0.7}>
+          <View style={styles.navIconContainer}>
+            <HomeIcon color={lightText} size={24} />
+          </View>
+          <Text style={[styles.navText, { color: lightText }]}>Home</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.navButton}
           onPress={handleRefreshPress}
@@ -263,7 +291,7 @@ export default function WebViewScreen({ url, onBackToScanner }) {
           onPress={onBackToScanner}
           activeOpacity={0.7}>
           <View style={styles.navIconContainer}>
-            <QRIcon color={lightText} size={26} />
+            <QRIcon color={lightText} size={24} />
           </View>
           <Text style={[styles.navText, { color: lightText }]}>Scan</Text>
         </TouchableOpacity>

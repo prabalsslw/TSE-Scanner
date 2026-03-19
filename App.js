@@ -8,6 +8,7 @@ import {
   Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import HomeScreen from './components/HomeScreen';
 import QRScanner from './components/QRScanner';
 import WebViewScreen from './components/WebViewScreen';
 import Logo from './components/Logo';
@@ -15,6 +16,7 @@ import { isValidURL } from './utils/urlValidator';
 import { config } from './config';
 
 export default function App() {
+  const [currentScreen, setCurrentScreen] = useState('splash'); // 'splash', 'home', 'scanner', 'webview'
   const [url, setUrl] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
 
@@ -110,6 +112,7 @@ export default function App() {
 
     const timer = setTimeout(() => {
       setShowSplash(false);
+      setCurrentScreen('home'); // Navigate to home after splash
     }, 3000);
 
     return () => {
@@ -131,8 +134,23 @@ export default function App() {
     const isValid = isValidURL(data, false);
     if (isValid) {
       setUrl(data);
+      setCurrentScreen('webview');
     }
     return isValid;
+  };
+
+  const handleDineIn = () => {
+    setCurrentScreen('scanner');
+  };
+
+  const handleBackToHome = () => {
+    setCurrentScreen('home');
+    setUrl(null);
+  };
+
+  const handleBackToScanner = () => {
+    setCurrentScreen('scanner');
+    setUrl(null);
   };
 
   if (showSplash) {
@@ -184,10 +202,23 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor={primaryColor} />
 
       <View style={styles.content}>
-        {url ? (
-          <WebViewScreen url={url} onBackToScanner={() => setUrl(null)} />
-        ) : (
-          <QRScanner onScanSuccess={handleScan} />
+        {currentScreen === 'home' && (
+          <HomeScreen onDineIn={handleDineIn} />
+        )}
+        
+        {currentScreen === 'scanner' && (
+          <QRScanner 
+            onScanSuccess={handleScan}
+            onBackToHome={handleBackToHome}
+          />
+        )}
+        
+        {currentScreen === 'webview' && url && (
+          <WebViewScreen 
+            url={url} 
+            onBackToScanner={handleBackToScanner}
+            onBackToHome={handleBackToHome}
+          />
         )}
       </View>
     </SafeAreaView>

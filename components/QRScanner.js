@@ -13,37 +13,32 @@ import {
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import Constants from 'expo-constants';
 import Logo from './Logo';
+import { config } from '../config';
+import Svg, { Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 const SCAN_BOX_SIZE = width * 0.7;
 
-// Get config from app.json using modern Expo Constants API
-const getConfig = () => {
-  try {
-    // Modern Expo Constants API (SDK 49+)
-    const extra = Constants.expoConfig?.extra || {};
-    
-    return {
-      appName: extra.appName || "THE SOUTH END",
-      tagline: extra.tagline || "where nature meets music",
-      footerText: extra.footerText || "SCAN • ORDER • ENJOY"
-    };
-  } catch (error) {
-    // Fallback values if config fails
-    console.log('Error loading config:', error);
-    return {
-      appName: "THE SOUTH END",
-      tagline: "where nature meets music",
-      footerText: "SCAN • ORDER • ENJOY"
-    };
-  }
-};
+// Home Icon Component
+const HomeIcon = ({ color = '#EFEFF3', size = 28 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3L4 9V21H20V9L12 3Z"
+      stroke={color}
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M9 21V15H15V21"
+      stroke={color}
+      strokeWidth="2"
+      fill="none"
+    />
+  </Svg>
+);
 
-const { appName, tagline, footerText } = getConfig();
-
-export default function QRScanner({ onScanSuccess }) {
+export default function QRScanner({ onScanSuccess, onBackToHome }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [torch, setTorch] = useState(false);
@@ -53,6 +48,17 @@ export default function QRScanner({ onScanSuccess }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const modalButtonAnim = useRef(new Animated.Value(1)).current;
+  const homeButtonAnim = useRef(new Animated.Value(1)).current;
+
+  const { 
+    primaryColor, 
+    accentColor, 
+    secondaryColor, 
+    backgroundColor,
+    lightText,
+    appName,
+    footerText
+  } = config;
 
   useEffect(() => {
     const scanLineAnimation = Animated.loop(
@@ -107,6 +113,26 @@ export default function QRScanner({ onScanSuccess }) {
     };
   }, [scanLineAnim, pulseAnim, rotateAnim]);
 
+  // Home button subtle pulse animation
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(homeButtonAnim, {
+          toValue: 1.08,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(homeButtonAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [homeButtonAnim]);
+
   // Fade in/out animation for Modal button when modal is visible
   useEffect(() => {
     if (showInvalidModal) {
@@ -143,16 +169,16 @@ export default function QRScanner({ onScanSuccess }) {
 
   if (!permission) {
     return (
-      <SafeAreaView style={styles.safeContainer}>
+      <SafeAreaView style={[styles.safeContainer, { backgroundColor: primaryColor }]}>
         <View style={styles.loadingContainer}>
           <Animated.View style={{ transform: [{ rotate: rotation }] }}>
             <Logo size={100} />
           </Animated.View>
-          <Text style={styles.loadingText}>Preparing your experience...</Text>
+          <Text style={[styles.loadingText, { color: lightText }]}>Preparing your experience...</Text>
           <View style={styles.loadingDots}>
-            <Animated.View style={[styles.dot, { opacity: pulseAnim }]} />
-            <Animated.View style={[styles.dot, { opacity: pulseAnim }]} />
-            <Animated.View style={[styles.dot, { opacity: pulseAnim }]} />
+            <Animated.View style={[styles.dot, { opacity: pulseAnim, backgroundColor: accentColor }]} />
+            <Animated.View style={[styles.dot, { opacity: pulseAnim, backgroundColor: secondaryColor }]} />
+            <Animated.View style={[styles.dot, { opacity: pulseAnim, backgroundColor: backgroundColor }]} />
           </View>
         </View>
       </SafeAreaView>
@@ -161,11 +187,14 @@ export default function QRScanner({ onScanSuccess }) {
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.safeContainer}>
+      <SafeAreaView style={[styles.safeContainer, { backgroundColor: primaryColor }]}>
         <View style={styles.centerContainer}>
           <Logo size={100} />
-          <Text style={styles.infoText}>Camera access needed for scanning</Text>
-          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+          <Text style={[styles.infoText, { color: lightText }]}>Camera access needed for scanning</Text>
+          <TouchableOpacity 
+            style={[styles.permissionButton, { backgroundColor: secondaryColor }]} 
+            onPress={requestPermission}
+          >
             <Text style={styles.permissionButtonText}>Enable Camera</Text>
           </TouchableOpacity>
         </View>
@@ -202,9 +231,14 @@ export default function QRScanner({ onScanSuccess }) {
     setShowInvalidModal(false);
   };
 
+  const homeButtonScale = homeButtonAnim.interpolate({
+    inputRange: [0.5, 1, 1.5],
+    outputRange: [0.95, 1, 0.95],
+  });
+
   return (
-    <SafeAreaView style={styles.safeContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="#4A4452" />
+    <SafeAreaView style={[styles.safeContainer, { backgroundColor: primaryColor }]}>
+      <StatusBar barStyle="light-content" backgroundColor={primaryColor} />
       
       <CameraView
         style={StyleSheet.absoluteFillObject}
@@ -216,53 +250,83 @@ export default function QRScanner({ onScanSuccess }) {
       {/* Semi-transparent overlay with hole for scanner */}
       <View style={styles.overlay}>
         {/* Top section with logo - dark overlay */}
-        <View style={styles.topOverlay}>
+        <View style={[styles.topOverlay, { backgroundColor: `${primaryColor}E6` }]}>
           <View style={styles.logoSection}>
-            <Animated.View style={[styles.logoWrapper, { transform: [{ scale: pulseAnim }] }]}>
+            <Animated.View style={[styles.logoWrapper, { transform: [{ scale: pulseAnim }], borderColor: accentColor }]}>
               <Logo size={90} />
             </Animated.View>
-            <Text style={styles.brandName}>{appName}</Text>
-            <Text style={styles.tagline}>{tagline}</Text>
+            <Text style={[styles.brandName, { color: lightText }]}>{appName}</Text>
+            <Text style={[styles.tagline, { color: accentColor }]}>{config.tagline}</Text>
           </View>
         </View>
 
         {/* Middle section with transparent scan window */}
         <View style={styles.middleOverlay}>
           {/* Left overlay */}
-          <View style={[styles.sideOverlay, { width: (width - SCAN_BOX_SIZE) / 2 }]} />
+          <View style={[styles.sideOverlay, { backgroundColor: `${primaryColor}E6`, width: (width - SCAN_BOX_SIZE) / 2 }]} />
           
           {/* Center with transparent window */}
           <View style={styles.scanWindow}>
             <View style={styles.scanFrame}>
-              <View style={[styles.corner, styles.cornerTopLeft]} />
-              <View style={[styles.corner, styles.cornerTopRight]} />
-              <View style={[styles.corner, styles.cornerBottomLeft]} />
-              <View style={[styles.corner, styles.cornerBottomRight]} />
+              <View style={[styles.corner, styles.cornerTopLeft, { borderColor: accentColor }]} />
+              <View style={[styles.corner, styles.cornerTopRight, { borderColor: accentColor }]} />
+              <View style={[styles.corner, styles.cornerBottomLeft, { borderColor: accentColor }]} />
+              <View style={[styles.corner, styles.cornerBottomRight, { borderColor: accentColor }]} />
               
-              <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]} />
+              <Animated.View style={[styles.scanLine, { backgroundColor: accentColor, transform: [{ translateY }] }]} />
             </View>
           </View>
           
           {/* Right overlay */}
-          <View style={[styles.sideOverlay, { width: (width - SCAN_BOX_SIZE) / 2 }]} />
+          <View style={[styles.sideOverlay, { backgroundColor: `${primaryColor}E6`, width: (width - SCAN_BOX_SIZE) / 2 }]} />
         </View>
 
         {/* Bottom section with controls and footer - dark overlay */}
-        <View style={styles.bottomOverlay}>
-          <View style={styles.scanInstructionContainer}>
-            <Text style={styles.scanInstruction}>
+        <View style={[styles.bottomOverlay, { backgroundColor: `${primaryColor}E6` }]}>
+          <View style={[styles.scanInstructionContainer, { borderColor: secondaryColor }]}>
+            <Text style={[styles.scanInstruction, { color: lightText }]}>
               {scanned ? '✓ Code Captured' : 'Place QR code in frame'}
             </Text>
             <TouchableOpacity 
-              style={[styles.flashButton, torch && styles.flashButtonActive]} 
+              style={[
+                styles.flashButton, 
+                { borderColor: secondaryColor },
+                torch && { backgroundColor: accentColor, borderColor: lightText }
+              ]} 
               onPress={toggleTorch}
             >
-              <Text style={[styles.flashIcon, torch && styles.flashIconActive]}>⚡</Text>
+              <Text style={[styles.flashIcon, torch && { color: primaryColor }]}>⚡</Text>
             </TouchableOpacity>
           </View>
           
-          <View style={styles.bottomFooter}>
-            <Text style={styles.footerText}>{footerText}</Text>
+          {/* Home Button - Centered at bottom */}
+          <Animated.View style={[styles.homeButtonWrapper, { transform: [{ scale: homeButtonScale }] }]}>
+            <TouchableOpacity
+              style={[styles.homeButton, { backgroundColor: `${secondaryColor}40`, borderColor: accentColor }]}
+              onPress={onBackToHome}
+              activeOpacity={0.7}
+            >
+              <HomeIcon color={lightText} size={24} />
+            </TouchableOpacity>
+          </Animated.View>
+          
+          {/* Footer with text and dots - exactly like homepage */}
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: backgroundColor }]}>{footerText}</Text>
+            <View style={styles.footerDots}>
+              {[0, 1, 2].map((i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.footerDot,
+                    {
+                      backgroundColor: i === 1 ? accentColor : secondaryColor,
+                      opacity: i === 1 ? 1 : 0.4,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
           </View>
         </View>
       </View>
@@ -274,20 +338,20 @@ export default function QRScanner({ onScanSuccess }) {
         visible={showInvalidModal}
         onRequestClose={() => setShowInvalidModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalIconContainer}>
+        <View style={[styles.modalOverlay, { backgroundColor: `${primaryColor}CC` }]}>
+          <View style={[styles.modalContent, { backgroundColor: primaryColor, borderColor: accentColor }]}>
+            <View style={[styles.modalIconContainer, { borderColor: accentColor }]}>
               <Text style={styles.modalIcon}>⚠️</Text>
             </View>
-            <Text style={styles.modalTitle}>Invalid QR Code</Text>
-            <Text style={styles.modalMessage}>{invalidMessage}</Text>
+            <Text style={[styles.modalTitle, { color: accentColor }]}>Invalid QR Code</Text>
+            <Text style={[styles.modalMessage, { color: lightText }]}>{invalidMessage}</Text>
             <View style={styles.modalButtonContainer}>
               <Animated.View style={{ opacity: modalButtonAnim }}>
                 <TouchableOpacity
-                  style={styles.modalButton}
+                  style={[styles.modalButton, { borderColor: accentColor }]}
                   onPress={handleScanAgain}
                 >
-                  <Text style={styles.modalButtonText}>⟳ Scan New Code</Text>
+                  <Text style={[styles.modalButtonText, { color: lightText }]}>⟳ Scan New Code</Text>
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -301,16 +365,13 @@ export default function QRScanner({ onScanSuccess }) {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#4A4452',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#4A4452',
   },
   loadingText: {
-    color: '#EFEFF3',
     fontSize: 18,
     marginTop: 20,
     fontFamily: 'System',
@@ -325,7 +386,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#EF876D',
     marginHorizontal: 4,
   },
   centerContainer: {
@@ -335,7 +395,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   infoText: {
-    color: '#EFEFF3',
     fontSize: 16,
     textAlign: 'center',
     marginTop: 20,
@@ -344,10 +403,10 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   permissionButton: {
-    backgroundColor: '#7E62BC',
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 30,
+    marginBottom: 15,
   },
   permissionButtonText: {
     color: '#EFEFF3',
@@ -360,7 +419,6 @@ const styles = StyleSheet.create({
   },
   topOverlay: {
     flex: 2,
-    backgroundColor: 'rgba(74, 68, 82, 0.9)',
     justifyContent: 'flex-start',
     alignItems: 'center',
   },
@@ -370,7 +428,6 @@ const styles = StyleSheet.create({
   },
   sideOverlay: {
     height: SCAN_BOX_SIZE,
-    backgroundColor: 'rgba(74, 68, 82, 0.9)',
   },
   scanWindow: {
     width: SCAN_BOX_SIZE,
@@ -381,10 +438,10 @@ const styles = StyleSheet.create({
   },
   bottomOverlay: {
     flex: 2,
-    backgroundColor: 'rgba(74, 68, 82, 0.9)',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 30,
+    paddingBottom: 20,
   },
   logoSection: {
     paddingTop: 50,
@@ -399,10 +456,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
     borderWidth: 2,
-    borderColor: '#EF876D',
   },
   brandName: {
-    color: '#EFEFF3',
     fontSize: 26,
     fontWeight: '600',
     letterSpacing: 3,
@@ -410,7 +465,6 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
   },
   tagline: {
-    color: '#EF876D',
     fontSize: 13,
     fontWeight: '500',
     letterSpacing: 1.2,
@@ -427,7 +481,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 25,
     height: 25,
-    borderColor: '#EF876D',
     borderWidth: 3,
     zIndex: 10,
   },
@@ -460,7 +513,6 @@ const styles = StyleSheet.create({
     left: 8,
     right: 8,
     height: 3,
-    backgroundColor: '#EF876D',
     borderRadius: 1.5,
     shadowColor: '#EF876D',
     shadowOffset: { width: 0, height: 0 },
@@ -477,11 +529,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 40,
     borderWidth: 1,
-    borderColor: '#7E62BC',
     marginBottom: 20,
   },
   scanInstruction: {
-    color: '#EFEFF3',
     fontSize: 15,
     fontWeight: '400',
     marginRight: 15,
@@ -496,44 +546,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#7E62BC',
-  },
-  flashButtonActive: {
-    backgroundColor: '#EF876D',
-    borderColor: '#EFEFF3',
   },
   flashIcon: {
     color: '#EFEFF3',
     fontSize: 18,
   },
-  flashIconActive: {
-    color: '#4A4452',
+  homeButtonWrapper: {
+    marginBottom: 20,
   },
-  bottomFooter: {
-    paddingBottom: 30,
+  homeButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  // New footer section matching homepage design
+  footer: {
+    alignItems: 'center',
+    paddingBottom: 10,
   },
   footerText: {
-    color: '#AFA8B8',
-    fontSize: 13,
+    fontSize: 12,
     letterSpacing: 2,
     fontWeight: '400',
+    marginBottom: 8,
+  },
+  footerDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footerDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginHorizontal: 3,
   },
   // Modern Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(74, 68, 82, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
     width: width * 0.85,
-    backgroundColor: '#4A4452',
     borderRadius: 30,
     padding: 30,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#EF876D',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
@@ -549,20 +616,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#EF876D',
   },
   modalIcon: {
     fontSize: 36,
   },
   modalTitle: {
-    color: '#EF876D',
     fontSize: 24,
     fontWeight: '600',
     marginBottom: 12,
     letterSpacing: 0.8,
   },
   modalMessage: {
-    color: '#EFEFF3',
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 30,
@@ -581,7 +645,6 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     minWidth: 180,
     borderWidth: 2,
-    borderColor: '#EF876D',
     shadowColor: '#EF876D',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -589,7 +652,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalButtonText: {
-    color: '#EFEFF3',
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',

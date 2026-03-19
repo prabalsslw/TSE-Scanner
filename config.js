@@ -2,6 +2,7 @@
 export const config = {
   appName: "THE SOUTH END",
   tagline: "where nature meets music",
+  homeTagLine: "How would you like to dine today?",
   footerText: "SCAN • ORDER • ENJOY",
   primaryColor: "#4A4452",
   accentColor: "#EF876D",
